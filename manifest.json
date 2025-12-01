@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Watch Later Manager",
+  "version": "1.0.0",
+  "description": "Manage and bulk delete videos from your YouTube Watch Later playlist",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://www.youtube.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"]
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Extension packaging
+*.zip
+*.crx
+*.pem
+
+# Logs
+*.log
+
+# Node (if you add build tools later)
+node_modules/
+package-lock.json
