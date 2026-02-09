@@ -33,7 +33,7 @@ A beautiful progress overlay shows real-time deletion progress with success/fail
 
 1. **Clone the repository**
 ```bash
-   git clone https://github.com/yourusername/youtube-watch-later-manager.git
+   git clone https://github.com/D3m0nZOnFire/YouTube-Watch-Later-Manager.git
    cd youtube-watch-later-manager
 ```
 
