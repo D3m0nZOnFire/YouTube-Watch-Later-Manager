@@ -1,12 +1,29 @@
 /* Checkbox container styles */
 .yt-wl-checkbox-container {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   width: 50px;
   min-width: 50px;
   padding: 0 10px;
   flex-shrink: 0;
+  gap: 4px;
+}
+
+.yt-wl-progress-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: #ff9800;
+  color: #fff;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.yt-wl-progress-badge--watched {
+  background: #00c853;
 }
 
 .yt-wl-checkbox {

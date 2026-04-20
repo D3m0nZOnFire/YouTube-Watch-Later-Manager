@@ -24,6 +24,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       deleteSelected();
       sendResponse({ success: true });
       break;
+    case 'selectWatched':
+      selectWatched(request.threshold || 85);
+      sendResponse(getStatus());
+      break;
   }
   return true;
 });
@@ -33,15 +37,35 @@ function isWatchLaterPage() {
   return window.location.href.includes('/playlist?list=WL');
 }
 
+// Get watch progress percentage for a single video element (0-100)
+function getVideoWatchProgress(video) {
+  const progressEl = video.querySelector('ytd-thumbnail-overlay-resume-playback-renderer #progress');
+  if (progressEl && progressEl.style.width) {
+    return parseFloat(progressEl.style.width) || 0;
+  }
+  return 0;
+}
+
 // Get current status
 function getStatus() {
   const checkboxes = document.querySelectorAll('.yt-wl-checkbox');
   const checkedBoxes = document.querySelectorAll('.yt-wl-checkbox:checked');
-  
+  const videos = document.querySelectorAll('ytd-playlist-video-renderer');
+
+  let watchedCount = 0;
+  let inProgressCount = 0;
+  videos.forEach(video => {
+    const pct = getVideoWatchProgress(video);
+    if (pct >= 85) watchedCount++;
+    else if (pct > 0) inProgressCount++;
+  });
+
   return {
     checkboxesVisible: checkboxesVisible,
     totalVideos: checkboxes.length,
-    selectedCount: checkedBoxes.length
+    selectedCount: checkedBoxes.length,
+    watchedCount,
+    inProgressCount
   };
 }
 
@@ -66,17 +90,27 @@ function addCheckboxes() {
     checkbox.type = 'checkbox';
     checkbox.className = 'yt-wl-checkbox';
     checkbox.dataset.videoIndex = index;
-    
+
     // Prevent checkbox from triggering video navigation
     checkbox.addEventListener('click', (e) => {
       e.stopPropagation();
     });
-    
+
     container.addEventListener('click', (e) => {
       e.stopPropagation();
     });
-    
+
     container.appendChild(checkbox);
+
+    // Add watch progress badge
+    const pct = getVideoWatchProgress(video);
+    if (pct > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'yt-wl-progress-badge' + (pct >= 85 ? ' yt-wl-progress-badge--watched' : '');
+      badge.textContent = pct >= 85 ? '✓' : `${Math.round(pct)}%`;
+      badge.title = pct >= 85 ? 'Watched' : `${Math.round(pct)}% watched`;
+      container.appendChild(badge);
+    }
     
     // Insert checkbox column
     const videoContent = video.querySelector('#content');
@@ -115,6 +149,21 @@ function selectAll() {
 // Deselect all checkboxes
 function deselectAll() {
   document.querySelectorAll('.yt-wl-checkbox').forEach(cb => cb.checked = false);
+}
+
+// Select videos at or above a watch percentage threshold
+function selectWatched(threshold = 85) {
+  if (!checkboxesVisible) {
+    addCheckboxes();
+    checkboxesVisible = true;
+  }
+  const videos = document.querySelectorAll('ytd-playlist-video-renderer');
+  videos.forEach(video => {
+    const checkbox = video.querySelector('.yt-wl-checkbox');
+    if (checkbox) {
+      checkbox.checked = getVideoWatchProgress(video) >= threshold;
+    }
+  });
 }
 
 // Delete selected videos
@@ -283,3 +332,23 @@ window.addEventListener('scroll', () => {
     scrollTimeout = setTimeout(addCheckboxes, 300);
   }
 });
+
+// Log video stats to console (for testing)
+function logVideoStats() {
+  if (!isWatchLaterPage()) return;
+  const videos = document.querySelectorAll('ytd-playlist-video-renderer');
+  console.group(`[WL Manager] Video stats — ${videos.length} videos loaded`);
+  videos.forEach((video, i) => {
+    const titleEl = video.querySelector('#video-title');
+    const title = titleEl ? titleEl.textContent.trim() : '(unknown)';
+    const pct = getVideoWatchProgress(video);
+    const label = pct >= 85 ? 'watched' : pct > 0 ? `${Math.round(pct)}%` : 'not started';
+    console.log(`${i + 1}. ${title} — ${label}`);
+  });
+  console.groupEnd();
+}
+
+// Auto-run stats on Watch Later page after DOM settles
+if (isWatchLaterPage()) {
+  setTimeout(logVideoStats, 2000);
+}

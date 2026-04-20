@@ -239,6 +239,14 @@
         <span class="status-label">Selected Videos:</span>
         <span class="status-value" id="selectedCount">0</span>
       </div>
+      <div class="status-item">
+        <span class="status-label">Watched (≥95%):</span>
+        <span class="status-value" id="watchedCount">—</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">In Progress:</span>
+        <span class="status-value" id="inProgressCount">—</span>
+      </div>
     </div>
 
     <div class="warning" id="warningMessage">
@@ -271,6 +279,11 @@
       </button>
 
       <div class="divider"></div>
+
+      <button id="selectWatched" class="btn-success" disabled>
+        <span class="icon">✅</span>
+        <span>Select Watched (≥95%)</span>
+      </button>
 
       <button id="deleteSelected" class="btn-danger" disabled>
         <span class="icon">🗑️</span>

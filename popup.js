@@ -22,6 +22,7 @@ async function checkPageStatus() {
     pageStatus.className = 'status-value active';
     warningMessage.classList.remove('show');
     toggleButton.disabled = false;
+    document.getElementById('selectWatched').disabled = false;
   } else {
     pageStatus.textContent = 'Not on playlist';
     pageStatus.className = 'status-value inactive';
@@ -40,19 +41,23 @@ async function checkPageStatus() {
 function updateUIStatus(status) {
   const checkboxStatus = document.getElementById('checkboxStatus');
   const selectedCount = document.getElementById('selectedCount');
+  const watchedCount = document.getElementById('watchedCount');
+  const inProgressCount = document.getElementById('inProgressCount');
   const toggleButton = document.getElementById('toggleCheckboxes');
   const selectAllBtn = document.getElementById('selectAll');
   const deselectAllBtn = document.getElementById('deselectAll');
+  const selectWatchedBtn = document.getElementById('selectWatched');
   const deleteBtn = document.getElementById('deleteSelected');
-  
+
   checkboxesVisible = status.checkboxesVisible;
-  
+
   if (checkboxesVisible) {
     checkboxStatus.textContent = 'Active';
     checkboxStatus.className = 'status-value active';
     toggleButton.innerHTML = '<span class="icon">☑️</span><span>Hide Checkboxes</span>';
     selectAllBtn.disabled = false;
     deselectAllBtn.disabled = false;
+    selectWatchedBtn.disabled = false;
     deleteBtn.disabled = false;
   } else {
     checkboxStatus.textContent = 'Inactive';
@@ -60,10 +65,13 @@ function updateUIStatus(status) {
     toggleButton.innerHTML = '<span class="icon">☑️</span><span>Show Checkboxes</span>';
     selectAllBtn.disabled = true;
     deselectAllBtn.disabled = true;
+    selectWatchedBtn.disabled = true;
     deleteBtn.disabled = true;
   }
-  
+
   selectedCount.textContent = status.selectedCount || 0;
+  watchedCount.textContent = status.watchedCount != null ? status.watchedCount : '—';
+  inProgressCount.textContent = status.inProgressCount != null ? status.inProgressCount : '—';
 }
 
 // Toggle checkboxes
@@ -104,10 +112,18 @@ async function deleteSelected() {
   // Note: Progress will be shown in the content script overlay
 }
 
+// Select watched videos (>=85%)
+async function selectWatched() {
+  const tab = await getCurrentTab();
+  const result = await chrome.tabs.sendMessage(tab.id, { action: 'selectWatched', threshold: 85 });
+  updateUIStatus(result);
+}
+
 // Event listeners
 document.getElementById('toggleCheckboxes').addEventListener('click', toggleCheckboxes);
 document.getElementById('selectAll').addEventListener('click', selectAll);
 document.getElementById('deselectAll').addEventListener('click', deselectAll);
+document.getElementById('selectWatched').addEventListener('click', selectWatched);
 document.getElementById('deleteSelected').addEventListener('click', deleteSelected);
 
 // Initialize popup

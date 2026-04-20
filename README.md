@@ -8,6 +8,8 @@ A Chrome extension that allows you to bulk manage and delete videos from your Yo
 - 🔄 **Bulk Operations** - Select all or deselect all videos with one click
 - 🗑️ **Bulk Delete** - Delete multiple videos at once
 - 📊 **Progress Tracking** - Real-time progress bar during deletion
+- 👁️ **Watch Progress Detection** - Detects how much of each video you've watched, with badges on thumbnails
+- 🎯 **Select Watched** - Auto-select all videos you've watched ≥85% of with one click
 - 🎨 **Clean UI** - Modern, intuitive popup interface
 - 🌐 **Multi-language Support** - Works with YouTube in different languages
 - ⚡ **Fast & Efficient** - Lightweight and doesn't slow down YouTube
@@ -19,10 +21,11 @@ The extension popup provides a clean interface to manage your playlist:
 - Check page status
 - Toggle checkboxes visibility
 - Select/deselect all videos
+- Select all watched videos (≥85%) in one click
 - Delete selected videos
 
 ### Checkbox Interface
-Checkboxes appear in a dedicated column next to each video, ensuring you never accidentally navigate to a video when selecting it.
+Checkboxes appear in a dedicated column next to each video, ensuring you never accidentally navigate to a video when selecting it. Videos with watch history show a colored badge: green ✓ for watched (≥85%), orange percentage for in-progress.
 
 ### Progress Overlay
 A beautiful progress overlay shows real-time deletion progress with success/failure counts.
@@ -66,6 +69,7 @@ A beautiful progress overlay shows real-time deletion progress with success/fail
 4. **Select Videos**
    - Manually check videos you want to delete
    - Or use "Select All" to select everything
+   - Or use "Select Watched (≥85%)" to auto-select videos you've mostly watched
    - Or use "Deselect All" to clear selection
 
 5. **Delete Selected**
@@ -77,6 +81,7 @@ A beautiful progress overlay shows real-time deletion progress with success/fail
 
 - **Scroll to Load More**: As you scroll down, checkboxes automatically appear on newly loaded videos
 - **Safe Selection**: Clicking checkboxes won't navigate to the video - they're in a separate column
+- **Watch Badges**: Green ✓ means ≥85% watched, orange % means in-progress, no badge means not started
 - **Progress Tracking**: The extension shows real-time progress with success/fail counts
 - **Multi-language**: Works with YouTube in any language
 
