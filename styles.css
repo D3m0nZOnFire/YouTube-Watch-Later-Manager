@@ -1,138 +1,258 @@
-/* Checkbox container styles */
-.yt-wl-checkbox-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 50px;
-  min-width: 50px;
-  padding: 0 10px;
-  flex-shrink: 0;
-  gap: 4px;
-}
-
-.yt-wl-progress-badge {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 1px 4px;
+/* === PROGRESS LABELS === */
+.tidy-label {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
   border-radius: 4px;
-  background: #ff9800;
-  color: #fff;
+  margin-top: 6px;
   white-space: nowrap;
+}
+.tidy-label-watched { background: rgba(0, 200, 83, 0.15); color: #00c853; }
+.tidy-label-partial { background: rgba(255, 152, 0, 0.15); color: #ff9800; }
+.tidy-label-new { background: rgba(255, 255, 255, 0.06); color: #888; }
+
+/* === BUTTONS === */
+.tidy-btn {
+  border: 1.5px solid transparent;
+  border-radius: 20px;
+  padding: 9px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+  font-family: inherit;
   line-height: 1.4;
 }
 
-.yt-wl-progress-badge--watched {
-  background: #00c853;
+/* Primary: red outlined */
+.tidy-btn-primary {
+  background: transparent;
+  color: #f44336;
+  border-color: #f44336;
+}
+.tidy-btn-primary:hover { background: rgba(244, 67, 54, 0.1); }
+.tidy-btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* Ghost: neutral outlined */
+.tidy-btn-ghost {
+  background: transparent;
+  color: #aaa;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.tidy-btn-ghost:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+
+/* Danger: red filled — used only for the irreversible delete confirm */
+.tidy-btn-danger {
+  background: #f44336;
+  color: #fff;
+  border-color: #f44336;
+}
+.tidy-btn-danger:hover { background: #e53935; border-color: #e53935; }
+
+.tidy-btn-sm { padding: 6px 14px; font-size: 13px; border-radius: 16px; }
+
+/* === SIDEBAR BUTTON === */
+#tidy-sidebar-btn {
+  display: block;
+  margin-top: 16px;
 }
 
-.yt-wl-checkbox {
-  width: 20px;
-  height: 20px;
+/* === TOOLBAR === */
+#tidy-toolbar {
+  align-items: center;
+  gap: 12px;
+  padding: 10px 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  position: sticky;
+  top: 56px;
+  z-index: 100;
+  flex-wrap: wrap;
+}
+
+.tidy-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.tidy-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #ccc;
+  border-radius: 16px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  margin: 0;
-  accent-color: #3ea6ff;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  font-family: inherit;
+}
+.tidy-chip:hover { background: rgba(255, 255, 255, 0.08); }
+.tidy-chip-active {
+  border-color: #f44336;
+  color: #f44336;
+  background: rgba(244, 67, 54, 0.08);
+}
+.tidy-chip-active:hover { background: rgba(244, 67, 54, 0.15); }
+.tidy-chip span {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 18px;
+  text-align: center;
+}
+.tidy-chip-active span { background: rgba(244, 67, 54, 0.2); }
+
+.tidy-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
 }
 
-/* Progress overlay */
-.yt-wl-progress-overlay {
+#tidy-sel-label { color: #888; font-size: 13px; }
+
+/* === CHECKBOXES === */
+.tidy-cb-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+}
+
+.tidy-checkbox {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 17px;
+  height: 17px;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  background: #0f0f0f;
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+  display: block;
+  transition: border-color 0.15s, background 0.15s;
+}
+.tidy-checkbox:hover { border-color: #f44336; }
+.tidy-checkbox:checked {
+  background: #f44336;
+  border-color: #f44336;
+}
+.tidy-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 5px;
+  height: 9px;
+  border: 2px solid #fff;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+
+/* === SELECTED VIDEO ROW === */
+ytd-playlist-video-renderer.tidy-selected {
+  outline: 1.5px solid #f44336;
+  border-radius: 4px;
+  background: rgba(244, 67, 54, 0.04);
+}
+
+/* === OVERLAY === */
+.tidy-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.85);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 999999;
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(4px);
 }
 
-.yt-wl-progress-card {
-  background: #0f0f0f;
-  border: 2px solid #3ea6ff;
+/* === MODAL === */
+.tidy-modal {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
-  padding: 30px;
-  min-width: 400px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-}
-
-.yt-wl-progress-card h3 {
-  color: white;
-  font-size: 20px;
-  margin-bottom: 20px;
-  text-align: center;
-}
-
-.yt-wl-progress-stats {
-  color: #3ea6ff;
-  font-size: 24px;
-  font-weight: 600;
-  text-align: center;
-  margin-bottom: 15px;
-}
-
-.yt-wl-progress-bar-container {
-  width: 100%;
-  height: 24px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  overflow: hidden;
-  margin-bottom: 20px;
-}
-
-.yt-wl-progress-bar {
-  width: 0%;
-  height: 100%;
-  background: linear-gradient(90deg, #3ea6ff, #5ab4ff);
-  transition: width 0.3s ease;
-  border-radius: 12px;
-}
-
-.yt-wl-progress-details {
+  padding: 28px;
+  width: 480px;
+  max-width: calc(100vw - 40px);
+  max-height: 75vh;
   display: flex;
-  justify-content: space-around;
-  color: #aaa;
-  font-size: 14px;
+  flex-direction: column;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
 }
+.tidy-modal-sm { width: 340px; }
+.tidy-center { text-align: center; }
 
-.yt-wl-progress-details strong {
-  color: white;
-}
-
-/* Notification styles */
-.yt-wl-notification {
-  position: fixed;
-  top: 80px;
-  right: 20px;
-  background: #0f0f0f;
-  border: 2px solid #3ea6ff;
-  border-radius: 8px;
-  padding: 15px 20px;
-  color: white;
-  font-size: 14px;
+.tidy-modal-title {
+  color: #fff;
+  font-size: 17px;
   font-weight: 500;
-  z-index: 999998;
-  opacity: 0;
-  transform: translateX(400px);
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  margin: 0 0 16px;
+  flex-shrink: 0;
 }
 
-.yt-wl-notification.show {
-  opacity: 1;
-  transform: translateX(0);
+/* === LIST (review + deletion) === */
+.tidy-list {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.yt-wl-notification-success {
-  border-color: #00c853;
+.tidy-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #ccc;
+  padding: 5px 0;
 }
 
-.yt-wl-notification-warning {
-  border-color: #ffc107;
-}
+.tidy-dot { color: #f44336; font-size: 7px; flex-shrink: 0; line-height: 1; }
 
-.yt-wl-notification-error {
-  border-color: #ff4444;
+/* === DELETION STATUS ICONS === */
+.tidy-status-icon {
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+  font-size: 14px;
+}
+.tidy-s-pending { color: #555; }
+.tidy-s-active { color: #f44336; }
+.tidy-s-ok { color: #00c853; }
+.tidy-s-fail { color: #f44336; }
+
+/* === MODAL FOOTER === */
+.tidy-modal-footer {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+.tidy-footer-center { justify-content: center; }
+
+/* === DONE MODAL === */
+.tidy-done-stat {
+  text-align: center;
+  color: #aaa;
+  font-size: 15px;
+  margin: 0 0 6px;
+}
+.tidy-done-fail {
+  text-align: center;
+  color: #f44336;
+  font-size: 13px;
+  margin: 0 0 16px;
 }

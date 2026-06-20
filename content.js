@@ -1,354 +1,378 @@
-// State
-let checkboxesVisible = false;
-let checkboxElements = [];
+const tidyState = {
+  mode: 'browse', // 'browse' | 'cleanup' | 'review' | 'deleting' | 'done'
+  selected: new Set(),
+  activeChips: new Set(), // 'watched' | 'partial' | 'new'
+  deletionResults: [],
+};
 
-// Message listener
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  switch (request.action) {
-    case 'getStatus':
-      sendResponse(getStatus());
-      break;
-    case 'toggleCheckboxes':
-      toggleCheckboxes();
-      sendResponse(getStatus());
-      break;
-    case 'selectAll':
-      selectAll();
-      sendResponse(getStatus());
-      break;
-    case 'deselectAll':
-      deselectAll();
-      sendResponse(getStatus());
-      break;
-    case 'deleteSelected':
-      deleteSelected();
-      sendResponse({ success: true });
-      break;
-    case 'selectWatched':
-      selectWatched(request.threshold || 85);
-      sendResponse(getStatus());
-      break;
-  }
-  return true;
-});
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const isWL = () => location.href.includes('/playlist?list=WL');
 
-// Check if on Watch Later page
-function isWatchLaterPage() {
-  return window.location.href.includes('/playlist?list=WL');
+function getProgress(video) {
+  const el = video.querySelector('ytd-thumbnail-overlay-resume-playback-renderer #progress');
+  return el?.style.width ? parseFloat(el.style.width) || 0 : 0;
 }
 
-// Get watch progress percentage for a single video element (0-100)
-function getVideoWatchProgress(video) {
-  const progressEl = video.querySelector('ytd-thumbnail-overlay-resume-playback-renderer #progress');
-  if (progressEl && progressEl.style.width) {
-    return parseFloat(progressEl.style.width) || 0;
-  }
-  return 0;
+function getCategory(pct) {
+  return pct >= 85 ? 'watched' : pct > 0 ? 'partial' : 'new';
 }
 
-// Get current status
-function getStatus() {
-  const checkboxes = document.querySelectorAll('.yt-wl-checkbox');
-  const checkedBoxes = document.querySelectorAll('.yt-wl-checkbox:checked');
-  const videos = document.querySelectorAll('ytd-playlist-video-renderer');
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
 
-  let watchedCount = 0;
-  let inProgressCount = 0;
-  videos.forEach(video => {
-    const pct = getVideoWatchProgress(video);
-    if (pct >= 85) watchedCount++;
-    else if (pct > 0) inProgressCount++;
+// === PROGRESS LABELS (always visible) ===
+function syncProgressLabels() {
+  document.querySelectorAll('ytd-playlist-video-renderer').forEach(v => {
+    if (v.querySelector('.tidy-label')) return;
+    const pct = getProgress(v);
+    const cat = getCategory(pct);
+    const label = document.createElement('div');
+    label.className = `tidy-label tidy-label-${cat}`;
+    label.textContent = cat === 'watched' ? 'Watched' : cat === 'partial' ? `${Math.round(pct)}%` : 'Not started';
+    const meta = v.querySelector('#meta');
+    if (meta) meta.appendChild(label);
   });
-
-  return {
-    checkboxesVisible: checkboxesVisible,
-    totalVideos: checkboxes.length,
-    selectedCount: checkedBoxes.length,
-    watchedCount,
-    inProgressCount
-  };
 }
 
-// Add checkboxes to videos
-function addCheckboxes() {
-  if (!isWatchLaterPage()) return;
-  
-  const videos = document.querySelectorAll('ytd-playlist-video-renderer');
-  
-  videos.forEach((video, index) => {
-    // Skip if checkbox already exists
-    if (video.querySelector('.yt-wl-checkbox-container')) {
-      return;
-    }
-    
-    // Create checkbox container
-    const container = document.createElement('div');
-    container.className = 'yt-wl-checkbox-container';
-    
-    // Create checkbox
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.className = 'yt-wl-checkbox';
-    checkbox.dataset.videoIndex = index;
+// === SIDEBAR BUTTON ===
+function syncSidebarBtn() {
+  const header = document.querySelector('ytd-playlist-header-renderer');
+  if (!header) return;
 
-    // Prevent checkbox from triggering video navigation
-    checkbox.addEventListener('click', (e) => {
-      e.stopPropagation();
-    });
+  const wideForm = header.querySelector('.play-menu.wide-screen-form');
+  const smallForm = header.querySelector('.play-menu.small-screen-form');
+  const useSmall = smallForm && smallForm.offsetWidth > 0 && (!wideForm || wideForm.offsetWidth === 0);
 
-    container.addEventListener('click', (e) => {
-      e.stopPropagation();
-    });
-
-    container.appendChild(checkbox);
-
-    // Add watch progress badge
-    const pct = getVideoWatchProgress(video);
-    if (pct > 0) {
-      const badge = document.createElement('span');
-      badge.className = 'yt-wl-progress-badge' + (pct >= 85 ? ' yt-wl-progress-badge--watched' : '');
-      badge.textContent = pct >= 85 ? '✓' : `${Math.round(pct)}%`;
-      badge.title = pct >= 85 ? 'Watched' : `${Math.round(pct)}% watched`;
-      container.appendChild(badge);
-    }
-    
-    // Insert checkbox column
-    const videoContent = video.querySelector('#content');
-    if (videoContent) {
-      videoContent.style.display = 'flex';
-      videoContent.style.flexDirection = 'row';
-      videoContent.insertBefore(container, videoContent.firstChild);
-    }
-  });
-  
-  checkboxElements = Array.from(document.querySelectorAll('.yt-wl-checkbox'));
-}
-
-// Remove checkboxes
-function removeCheckboxes() {
-  document.querySelectorAll('.yt-wl-checkbox-container').forEach(el => el.remove());
-  checkboxElements = [];
-}
-
-// Toggle checkboxes visibility
-function toggleCheckboxes() {
-  if (checkboxesVisible) {
-    removeCheckboxes();
-    checkboxesVisible = false;
+  let targetParent, insertAfter;
+  if (useSmall) {
+    targetParent = header.querySelector('.immersive-header-content');
+    insertAfter = smallForm;
   } else {
-    addCheckboxes();
-    checkboxesVisible = true;
+    targetParent = header.querySelector('.thumbnail-and-metadata-wrapper');
+    insertAfter = null;
   }
-}
+  if (!targetParent) return;
 
-// Select all checkboxes
-function selectAll() {
-  document.querySelectorAll('.yt-wl-checkbox').forEach(cb => cb.checked = true);
-}
-
-// Deselect all checkboxes
-function deselectAll() {
-  document.querySelectorAll('.yt-wl-checkbox').forEach(cb => cb.checked = false);
-}
-
-// Select videos at or above a watch percentage threshold
-function selectWatched(threshold = 85) {
-  if (!checkboxesVisible) {
-    addCheckboxes();
-    checkboxesVisible = true;
+  let btn = document.getElementById('tidy-sidebar-btn');
+  if (btn && btn.parentElement !== targetParent) {
+    btn.remove();
+    btn = null;
   }
-  const videos = document.querySelectorAll('ytd-playlist-video-renderer');
-  videos.forEach(video => {
-    const checkbox = video.querySelector('.yt-wl-checkbox');
-    if (checkbox) {
-      checkbox.checked = getVideoWatchProgress(video) >= threshold;
-    }
-  });
-}
-
-// Delete selected videos
-async function deleteSelected() {
-  const videos = document.querySelectorAll('ytd-playlist-video-renderer');
-  const selectedVideos = Array.from(videos).filter(video => {
-    const checkbox = video.querySelector('.yt-wl-checkbox');
-    return checkbox && checkbox.checked;
-  });
-  
-  if (selectedVideos.length === 0) {
-    showNotification('No videos selected!', 'warning');
-    return;
-  }
-  
-  // Show progress overlay
-  const overlay = createProgressOverlay(selectedVideos.length);
-  document.body.appendChild(overlay);
-  
-  let index = 0;
-  let successCount = 0;
-  let failCount = 0;
-  
-  for (const video of selectedVideos) {
-    updateProgress(overlay, index, selectedVideos.length, successCount, failCount);
-    
-    const menuButton = video.querySelector('#menu button');
-    if (menuButton) {
-      menuButton.click();
-      
-      await sleep(300);
-      
-      const menuItems = document.querySelectorAll('tp-yt-paper-listbox#items > ytd-menu-service-item-renderer');
-      
-      let removeButton = null;
-      const removePatterns = [
-        'Remove from Watch later',
-        'Supprimer de À regarder plus tard',
-        'Aus "Später ansehen" entfernen',
-        'Eliminar de Ver más tarde',
-        'Rimuovi da Guarda più tardi'
-      ];
-      
-      for (const item of menuItems) {
-        const text = item.textContent.trim();
-        if (removePatterns.some(pattern => text.includes(pattern.split(' ')[0]))) {
-          removeButton = item;
-          break;
-        }
-      }
-      
-      if (!removeButton && menuItems.length > 0) {
-        removeButton = menuItems[0];
-      }
-      
-      if (removeButton) {
-        removeButton.click();
-        successCount++;
-      } else {
-        failCount++;
-      }
-      
-      await sleep(500);
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.id = 'tidy-sidebar-btn';
+    btn.addEventListener('click', () => tidyState.mode === 'browse' ? enterCleanup() : exitCleanup());
+    if (insertAfter && insertAfter.nextSibling) {
+      targetParent.insertBefore(btn, insertAfter.nextSibling);
     } else {
-      failCount++;
+      targetParent.appendChild(btn);
     }
-    
-    index++;
   }
-  
-  // Show completion
-  updateProgress(overlay, selectedVideos.length, selectedVideos.length, successCount, failCount, true);
-  
-  await sleep(3000);
-  overlay.remove();
-  
-  // Refresh page
-  removeCheckboxes();
-  checkboxesVisible = false;
-  
-  showNotification(`Deleted ${successCount} videos (${failCount} failed)`, 'success');
+
+  btn.textContent = tidyState.mode === 'browse' ? 'Clean up' : 'Exit';
+  btn.className = `tidy-btn ${tidyState.mode === 'browse' ? 'tidy-btn-primary' : 'tidy-btn-ghost'}`;
 }
 
-// Create progress overlay
-function createProgressOverlay(total) {
-  const overlay = document.createElement('div');
-  overlay.className = 'yt-wl-progress-overlay';
-  overlay.innerHTML = `
-    <div class="yt-wl-progress-card">
-      <h3>Deleting Videos</h3>
-      <div class="yt-wl-progress-stats">
-        <span id="yt-wl-progress-current">0</span> / <span id="yt-wl-progress-total">${total}</span>
+// === TOOLBAR ===
+function syncToolbar() {
+  const list = document.querySelector('ytd-playlist-video-list-renderer');
+  if (!list) return;
+
+  let bar = document.getElementById('tidy-toolbar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'tidy-toolbar';
+    bar.innerHTML = `
+      <div class="tidy-chips">
+        <button class="tidy-chip" data-g="watched">Watched <span id="tidy-n-watched">0</span></button>
+        <button class="tidy-chip" data-g="partial">Partial <span id="tidy-n-partial">0</span></button>
+        <button class="tidy-chip" data-g="new">Not started <span id="tidy-n-new">0</span></button>
       </div>
-      <div class="yt-wl-progress-bar-container">
-        <div class="yt-wl-progress-bar" id="yt-wl-progress-bar"></div>
+      <div class="tidy-bar-right">
+        <span id="tidy-sel-label">0 selected</span>
+        <button class="tidy-btn tidy-btn-ghost tidy-btn-sm" id="tidy-clear">Clear</button>
+        <button class="tidy-btn tidy-btn-primary tidy-btn-sm" id="tidy-review" disabled>Review (0)</button>
       </div>
-      <div class="yt-wl-progress-details">
-        <span>✓ Success: <strong id="yt-wl-success-count">0</strong></span>
-        <span>✗ Failed: <strong id="yt-wl-fail-count">0</strong></span>
+    `;
+    bar.querySelectorAll('.tidy-chip').forEach(c => c.addEventListener('click', () => toggleChip(c.dataset.g)));
+    bar.querySelector('#tidy-clear').addEventListener('click', clearSel);
+    bar.querySelector('#tidy-review').addEventListener('click', showReview);
+    list.insertBefore(bar, list.firstChild);
+  }
+
+  bar.style.display = tidyState.mode === 'cleanup' ? 'flex' : 'none';
+  if (tidyState.mode === 'cleanup') refreshToolbar();
+}
+
+function refreshToolbar() {
+  const videos = document.querySelectorAll('ytd-playlist-video-renderer');
+  let w = 0, p = 0, n = 0;
+  videos.forEach(v => {
+    const c = getCategory(getProgress(v));
+    if (c === 'watched') w++; else if (c === 'partial') p++; else n++;
+  });
+
+  const $ = id => document.getElementById(id);
+  $('tidy-n-watched').textContent = w;
+  $('tidy-n-partial').textContent = p;
+  $('tidy-n-new').textContent = n;
+
+  const sel = tidyState.selected.size;
+  $('tidy-sel-label').textContent = `${sel} selected`;
+  const rb = $('tidy-review');
+  if (rb) { rb.textContent = `Review (${sel})`; rb.disabled = sel === 0; }
+}
+
+// === CHECKBOXES ===
+function syncCheckboxes() {
+  document.querySelectorAll('ytd-playlist-video-renderer').forEach((v, i) => {
+    if (v.querySelector('.tidy-cb-wrap')) return;
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'tidy-checkbox';
+    cb.checked = tidyState.selected.has(i);
+    v.classList.toggle('tidy-selected', cb.checked);
+    cb.addEventListener('click', e => e.stopPropagation());
+    cb.addEventListener('change', () => {
+      tidyState.selected[cb.checked ? 'add' : 'delete'](i);
+      v.classList.toggle('tidy-selected', cb.checked);
+      refreshToolbar();
+    });
+    const ic = v.querySelector('#index-container');
+    if (!ic) return;
+    ic.querySelector('#index')?.style.setProperty('display', 'none');
+    ic.querySelector('#reorder')?.style.setProperty('display', 'none');
+    if (!ic.__tidyStop) {
+      ic.__tidyStop = e => e.stopPropagation();
+      ic.addEventListener('click', ic.__tidyStop);
+    }
+    const wrap = document.createElement('div');
+    wrap.className = 'tidy-cb-wrap';
+    wrap.appendChild(cb);
+    ic.appendChild(wrap);
+  });
+}
+
+function removeCheckboxes() {
+  document.querySelectorAll('ytd-playlist-video-renderer').forEach(v => {
+    v.classList.remove('tidy-selected');
+    const wrap = v.querySelector('.tidy-cb-wrap');
+    if (!wrap) return;
+    const ic = wrap.closest('#index-container');
+    if (ic) {
+      ic.querySelector('#index')?.style.removeProperty('display');
+      ic.querySelector('#reorder')?.style.removeProperty('display');
+      if (ic.__tidyStop) { ic.removeEventListener('click', ic.__tidyStop); delete ic.__tidyStop; }
+    }
+    wrap.remove();
+  });
+}
+
+// === SELECTION ===
+function toggleChip(group) {
+  const adding = !tidyState.activeChips.has(group);
+  if (adding) tidyState.activeChips.add(group); else tidyState.activeChips.delete(group);
+  document.querySelectorAll('ytd-playlist-video-renderer').forEach((v, i) => {
+    if (getCategory(getProgress(v)) === group) {
+      const cb = v.querySelector('.tidy-checkbox');
+      if (cb) cb.checked = adding;
+      v.classList.toggle('tidy-selected', adding);
+      tidyState.selected[adding ? 'add' : 'delete'](i);
+    }
+  });
+  syncChipStyles();
+  refreshToolbar();
+}
+
+function syncChipStyles() {
+  document.querySelectorAll('.tidy-chip').forEach(chip => {
+    chip.classList.toggle('tidy-chip-active', tidyState.activeChips.has(chip.dataset.g));
+  });
+}
+
+function clearSel() {
+  tidyState.selected.clear();
+  tidyState.activeChips.clear();
+  document.querySelectorAll('.tidy-checkbox').forEach(cb => (cb.checked = false));
+  document.querySelectorAll('ytd-playlist-video-renderer.tidy-selected').forEach(v => v.classList.remove('tidy-selected'));
+  syncChipStyles();
+  refreshToolbar();
+}
+
+// === STATE TRANSITIONS ===
+function enterCleanup() {
+  tidyState.mode = 'cleanup';
+  tidyState.selected.clear();
+  tidyState.activeChips.clear();
+  syncSidebarBtn();
+  syncToolbar();
+  syncCheckboxes();
+}
+
+function exitCleanup() {
+  tidyState.mode = 'browse';
+  tidyState.selected.clear();
+  tidyState.activeChips.clear();
+  removeCheckboxes();
+  syncSidebarBtn();
+  syncToolbar();
+}
+
+// === REVIEW ===
+function getSelectedItems() {
+  return Array.from(document.querySelectorAll('ytd-playlist-video-renderer'))
+    .map((v, i) => ({ video: v, i, title: v.querySelector('#video-title')?.textContent.trim() || 'Unknown' }))
+    .filter(({ i }) => tidyState.selected.has(i));
+}
+
+function showReview() {
+  tidyState.mode = 'review';
+  const items = getSelectedItems();
+  const ov = document.createElement('div');
+  ov.className = 'tidy-overlay';
+  ov.innerHTML = `
+    <div class="tidy-modal">
+      <h3 class="tidy-modal-title">Review before deleting</h3>
+      <div class="tidy-list">
+        ${items.map(({ title }) => `<div class="tidy-list-item"><span class="tidy-dot">●</span><span>${esc(title)}</span></div>`).join('')}
+      </div>
+      <div class="tidy-modal-footer">
+        <button class="tidy-btn tidy-btn-ghost" id="_rv-cancel">Cancel</button>
+        <button class="tidy-btn tidy-btn-danger" id="_rv-confirm">Delete ${items.length} video${items.length !== 1 ? 's' : ''}</button>
       </div>
     </div>
   `;
-  return overlay;
+  document.body.appendChild(ov);
+  ov.querySelector('#_rv-cancel').addEventListener('click', () => { ov.remove(); tidyState.mode = 'cleanup'; });
+  ov.querySelector('#_rv-confirm').addEventListener('click', () => { ov.remove(); startDeletion(items); });
 }
 
-// Update progress
-function updateProgress(overlay, current, total, successCount, failCount, complete = false) {
-  const progressBar = overlay.querySelector('#yt-wl-progress-bar');
-  const progressCurrent = overlay.querySelector('#yt-wl-progress-current');
-  const successCountEl = overlay.querySelector('#yt-wl-success-count');
-  const failCountEl = overlay.querySelector('#yt-wl-fail-count');
-  const title = overlay.querySelector('h3');
-  
-  const percentage = (current / total) * 100;
-  progressBar.style.width = `${percentage}%`;
-  progressCurrent.textContent = current;
-  successCountEl.textContent = successCount;
-  failCountEl.textContent = failCount;
-  
-  if (complete) {
-    title.textContent = 'Deletion Complete!';
-    progressBar.style.background = 'linear-gradient(90deg, #00c853, #00e676)';
+// === DELETION ===
+async function startDeletion(items) {
+  tidyState.mode = 'deleting';
+  tidyState.deletionResults = items.map(({ video, title }) => ({ video, title, status: 'pending' }));
+
+  const ov = document.createElement('div');
+  ov.className = 'tidy-overlay';
+  ov.innerHTML = `
+    <div class="tidy-modal">
+      <h3 class="tidy-modal-title">Deleting…</h3>
+      <div class="tidy-list" id="tidy-del-list">
+        ${tidyState.deletionResults.map((r, i) => `
+          <div class="tidy-list-item" id="tidy-dr-${i}">
+            <span class="tidy-status-icon tidy-s-pending">⋯</span>
+            <span>${esc(r.title)}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(ov);
+
+  for (let i = 0; i < tidyState.deletionResults.length; i++) {
+    const r = tidyState.deletionResults[i];
+    const icon = ov.querySelector(`#tidy-dr-${i} .tidy-status-icon`);
+    if (icon) { icon.textContent = '⟳'; icon.className = 'tidy-status-icon tidy-s-active'; }
+    const ok = await deleteVideo(r.video);
+    r.status = ok ? 'ok' : 'fail';
+    if (icon) { icon.textContent = ok ? '✓' : '✗'; icon.className = `tidy-status-icon tidy-s-${ok ? 'ok' : 'fail'}`; }
+  }
+
+  await sleep(800);
+  ov.remove();
+  showDone();
+}
+
+async function deleteVideo(video) {
+  const btn = video.querySelector('#menu button');
+  if (!btn) return false;
+  btn.click();
+  await sleep(300);
+
+  const items = document.querySelectorAll('tp-yt-paper-listbox#items > ytd-menu-service-item-renderer');
+  const patterns = [
+    'Remove from Watch later',
+    'Supprimer de',
+    'Aus "Später ansehen"',
+    'Eliminar de',
+    'Rimuovi da'
+  ];
+
+  let target = null;
+  for (const item of items) {
+    if (patterns.some(p => item.textContent.trim().startsWith(p))) { target = item; break; }
+  }
+  if (!target && items.length) target = items[0];
+  if (!target) return false;
+
+  target.click();
+  await sleep(500);
+  return true;
+}
+
+// === DONE ===
+function showDone() {
+  tidyState.mode = 'done';
+  const ok = tidyState.deletionResults.filter(r => r.status === 'ok').length;
+  const fail = tidyState.deletionResults.filter(r => r.status === 'fail').length;
+  const remain = document.querySelectorAll('ytd-playlist-video-renderer').length;
+
+  const ov = document.createElement('div');
+  ov.className = 'tidy-overlay';
+  ov.innerHTML = `
+    <div class="tidy-modal tidy-modal-sm">
+      <h3 class="tidy-modal-title tidy-center">Done</h3>
+      <p class="tidy-done-stat">${ok} removed · ${remain} remain</p>
+      ${fail ? `<p class="tidy-done-fail">${fail} couldn't be deleted</p>` : ''}
+      <div class="tidy-modal-footer tidy-footer-center">
+        ${fail ? `<button class="tidy-btn tidy-btn-ghost" id="_dn-retry">Retry failed</button>` : ''}
+        <button class="tidy-btn tidy-btn-primary" id="_dn-done">Done</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(ov);
+  ov.querySelector('#_dn-done').addEventListener('click', () => { ov.remove(); exitCleanup(); });
+  if (fail) {
+    ov.querySelector('#_dn-retry').addEventListener('click', () => {
+      ov.remove();
+      startDeletion(tidyState.deletionResults.filter(r => r.status === 'fail').map(r => ({ video: r.video, title: r.title })));
+    });
   }
 }
 
-// Show notification
-function showNotification(message, type = 'info') {
-  const notification = document.createElement('div');
-  notification.className = `yt-wl-notification yt-wl-notification-${type}`;
-  notification.textContent = message;
-  document.body.appendChild(notification);
-  
-  setTimeout(() => {
-    notification.classList.add('show');
-  }, 10);
-  
-  setTimeout(() => {
-    notification.classList.remove('show');
-    setTimeout(() => notification.remove(), 300);
-  }, 3000);
+// === SYNC ===
+let _syncTimer;
+function scheduleSync() {
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(() => {
+    if (!isWL()) return;
+    syncProgressLabels();
+    syncSidebarBtn();
+    syncToolbar();
+    if (tidyState.mode === 'cleanup') syncCheckboxes();
+  }, 400);
 }
 
-// Helper: sleep
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// Handle page navigation (YouTube SPA)
-let lastUrl = location.href;
+// === NAVIGATION (SPA) & SCROLL ===
+let _lastUrl = location.href;
 new MutationObserver(() => {
   const url = location.href;
-  if (url !== lastUrl) {
-    lastUrl = url;
-    if (!isWatchLaterPage() && checkboxesVisible) {
-      removeCheckboxes();
-      checkboxesVisible = false;
+  if (url !== _lastUrl) {
+    _lastUrl = url;
+    if (!isWL()) {
+      document.getElementById('tidy-toolbar')?.remove();
+      document.getElementById('tidy-sidebar-btn')?.remove();
+      document.querySelectorAll('.tidy-label, .tidy-checkbox').forEach(el => el.remove());
+      tidyState.mode = 'browse';
+      tidyState.selected.clear();
     }
   }
+  if (isWL()) scheduleSync();
 }).observe(document, { subtree: true, childList: true });
 
-// Handle dynamic content loading
-let scrollTimeout;
-window.addEventListener('scroll', () => {
-  if (checkboxesVisible && isWatchLaterPage()) {
-    clearTimeout(scrollTimeout);
-    scrollTimeout = setTimeout(addCheckboxes, 300);
-  }
-});
+window.addEventListener('scroll', () => { if (isWL()) scheduleSync(); }, { passive: true });
+window.addEventListener('resize', () => { if (isWL()) scheduleSync(); }, { passive: true });
 
-// Log video stats to console (for testing)
-function logVideoStats() {
-  if (!isWatchLaterPage()) return;
-  const videos = document.querySelectorAll('ytd-playlist-video-renderer');
-  console.group(`[WL Manager] Video stats — ${videos.length} videos loaded`);
-  videos.forEach((video, i) => {
-    const titleEl = video.querySelector('#video-title');
-    const title = titleEl ? titleEl.textContent.trim() : '(unknown)';
-    const pct = getVideoWatchProgress(video);
-    const label = pct >= 85 ? 'watched' : pct > 0 ? `${Math.round(pct)}%` : 'not started';
-    console.log(`${i + 1}. ${title} — ${label}`);
-  });
-  console.groupEnd();
-}
-
-// Auto-run stats on Watch Later page after DOM settles
-if (isWatchLaterPage()) {
-  setTimeout(logVideoStats, 2000);
-}
+if (isWL()) setTimeout(scheduleSync, 1500);
