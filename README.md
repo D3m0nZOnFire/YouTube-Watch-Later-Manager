@@ -1,6 +1,6 @@
-# YouTube Watch Later Manager
+# YouTube Tools
 
-A Chrome/Brave extension for bulk-cleaning your YouTube Watch Later playlist. It injects a cleanup mode directly into the Watch Later page — no popup workflow, no manual clicking through menus.
+A Chrome/Brave extension that enhances YouTube with sitewide filters and a bulk Watch Later cleanup tool.
 
 ## Table of Contents
 
@@ -16,7 +16,11 @@ A Chrome/Brave extension for bulk-cleaning your YouTube Watch Later playlist. It
 
 ## Features
 
-- **Inline cleanup mode** — a "Clean up" button is injected into the Watch Later page header; no popup required
+### Sitewide
+- **Hide members-only videos** — toggle in the popup to hide members-only content across channel pages, the home feed, search results, and anywhere else on YouTube
+
+### Watch Later cleanup
+- **Inline cleanup mode** — a "Clean up" button is injected into the Watch Later page header; no popup workflow, no manual clicking through menus
 - **Watch progress labels** — every video shows a label at all times: "Watched", a partial percentage, or "Not started"
 - **Filter chips** — select videos by category (Watched / Partial / Not started); chips are cumulative and toggleable
 - **Per-video checkboxes** — select individual videos on top of chip selections
@@ -34,7 +38,7 @@ A Chrome/Brave extension for bulk-cleaning your YouTube Watch Later playlist. It
 
 1. Clone the repository
 ```bash
-git clone https://github.com/D3m0nZOnFire/YouTube-Watch-Later-Manager.git
+git clone https://github.com/D3m0nZOnFire/Youtube-Tools.git
 ```
 
 2. Open `chrome://extensions/` (or `brave://extensions/`)
@@ -43,11 +47,19 @@ git clone https://github.com/D3m0nZOnFire/YouTube-Watch-Later-Manager.git
 
 4. Click **Load unpacked** and select the cloned folder
 
-5. Navigate to your [Watch Later playlist](https://www.youtube.com/playlist?list=WL)
+5. Navigate to [youtube.com](https://www.youtube.com) — the extension is active immediately
 
 ---
 
 ## Usage
+
+### Hide members-only videos
+
+1. Click the extension icon
+2. Toggle **Hide members-only** on — members-only cards disappear sitewide immediately
+3. The setting persists across sessions and page reloads
+
+### Watch Later cleanup
 
 1. Go to [youtube.com/playlist?list=WL](https://www.youtube.com/playlist?list=WL)
 
@@ -69,7 +81,9 @@ git clone https://github.com/D3m0nZOnFire/YouTube-Watch-Later-Manager.git
 
 ## How It Works
 
-- **Content script** (`content.js`) runs on every `youtube.com` page and activates only on the Watch Later URL
+- **Members-only filter** injects a single `<style>` tag targeting `ytd-rich-item-renderer:has(.ytContentMetadataViewModelMetadataRowMetadataRowWrap)` — no iteration needed, the CSS selector handles lazy-loaded content automatically
+- **Settings** are stored via `chrome.storage.sync` and applied on every page load; toggling in the popup instantly messages all open YouTube tabs
+- **Content script** (`content.js`) runs on every `youtube.com` page; the Watch Later cleanup UI activates only on the Watch Later URL
 - **SPA navigation** is handled by a `MutationObserver` watching the full document, so the extension re-initializes correctly after YouTube's client-side navigation
 - **Progress labels** are read from `ytd-thumbnail-overlay-resume-playback-renderer #progress` (inline `style.width`)
 - **Deletion** simulates YouTube's own UI: opens the video's context menu, finds the "Remove from Watch Later" item, and clicks it — no API calls
@@ -80,12 +94,12 @@ git clone https://github.com/D3m0nZOnFire/YouTube-Watch-Later-Manager.git
 ## Project Structure
 
 ```
-youtube-watch-later-manager/
+youtube-tools/
 ├── manifest.json      # Extension configuration (Manifest V3)
-├── content.js         # All page logic: state machine, UI injection, deletion
+├── content.js         # Page logic: members filter, Watch Later state machine, UI injection, deletion
 ├── styles.css         # Styles for injected UI elements
-├── popup.html         # Minimal popup (opens the Watch Later page)
-├── popup.js           # Popup script
+├── popup.html         # Settings panel (filters, Watch Later shortcut, GitHub link)
+├── popup.js           # Popup script: reads/writes storage, messages open tabs
 ├── icons/             # Extension icons (16, 32, 48, 128px PNG)
 └── README.md
 ```
@@ -96,6 +110,7 @@ youtube-watch-later-manager/
 
 **Permissions requested:**
 
+- `storage` — saves your filter preferences locally via `chrome.storage.sync`
 - `https://www.youtube.com/*` — required to inject the content script into YouTube pages
 
 No data is collected, no external requests are made, and nothing leaves your browser. All operations interact only with YouTube's own DOM.
@@ -104,7 +119,6 @@ No data is collected, no external requests are made, and nothing leaves your bro
 
 ## Known Limitations
 
-- Only works on the Watch Later playlist (`/playlist?list=WL`)
-- YouTube's rate limiting may slow down large batch deletions
+- YouTube's rate limiting may slow down large batch deletions on Watch Later
 - If YouTube updates its DOM structure, selectors may need updating
-- Newly lazy-loaded videos (from scrolling) are picked up automatically, but very fast scrolling may outpace the debounce
+- Newly lazy-loaded videos (from scrolling) are picked up automatically by the Watch Later cleanup, but very fast scrolling may outpace the debounce

@@ -1,0 +1,18 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="128" height="128" rx="22" fill="#0f0f0f"/>
+  <!-- Clock face -->
+  <circle cx="58" cy="58" r="38" stroke="#f44336" stroke-width="7"/>
+  <!-- Hour hand (~10 o'clock) -->
+  <line x1="58" y1="58" x2="38" y2="36" stroke="#f44336" stroke-width="7" stroke-linecap="round"/>
+  <!-- Minute hand (12 o'clock) -->
+  <line x1="58" y1="58" x2="58" y2="28" stroke="#f44336" stroke-width="5" stroke-linecap="round"/>
+  <!-- Center dot -->
+  <circle cx="58" cy="58" r="4" fill="#f44336"/>
+  <!-- Broom handle (diagonal, bottom-right) -->
+  <line x1="86" y1="86" x2="114" y2="114" stroke="#f44336" stroke-width="7" stroke-linecap="round"/>
+  <!-- Broom head bristles (fan) -->
+  <line x1="80" y1="92" x2="100" y2="120" stroke="#f44336" stroke-width="5" stroke-linecap="round"/>
+  <line x1="92" y1="80" x2="120" y2="100" stroke="#f44336" stroke-width="5" stroke-linecap="round"/>
+  <!-- Broom head connector arc -->
+  <path d="M80 92 Q86 86 92 80" stroke="#f44336" stroke-width="5" stroke-linecap="round" fill="none"/>
+</svg>

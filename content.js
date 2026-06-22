@@ -1,3 +1,29 @@
+// === MEMBERS-ONLY FILTER ===
+const MEMBERS_STYLE_ID = 'yt-tools-members-filter';
+
+function applyMembersFilter(enabled) {
+  let el = document.getElementById(MEMBERS_STYLE_ID);
+  if (enabled) {
+    if (!el) {
+      el = document.createElement('style');
+      el.id = MEMBERS_STYLE_ID;
+      el.textContent = 'ytd-rich-item-renderer:has(.ytContentMetadataViewModelMetadataRowMetadataRowWrap){display:none!important}';
+      document.head.appendChild(el);
+    }
+  } else {
+    el?.remove();
+  }
+}
+
+chrome.storage.sync.get(['hideMembersOnly'], ({ hideMembersOnly }) => {
+  applyMembersFilter(!!hideMembersOnly);
+});
+
+chrome.runtime.onMessage.addListener(({ type, enabled }) => {
+  if (type === 'toggleMembersFilter') applyMembersFilter(enabled);
+});
+
+// === WATCH LATER CLEANUP ===
 const tidyState = {
   mode: 'browse', // 'browse' | 'cleanup' | 'review' | 'deleting' | 'done'
   selected: new Set(),
